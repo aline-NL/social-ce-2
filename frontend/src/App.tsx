@@ -1,9 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 //import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Layout from './components/layout/Layout';
+import { Sidebar } from './components/layout/Sidebar';
+import { Header } from './components/layout/Header';
+import { Loader2 } from 'lucide-react';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/Dashboard';
 import FamiliasList from './pages/familias/FamiliasList';
@@ -52,77 +54,118 @@ const ProtectedRoute = ({ children, requiredRole = 'visualizador' }: ProtectedRo
 };
 
 function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isAuthenticated, loading } = useAuth();
+  
+  // Close sidebar when navigating on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/login" element={<Login />} />
+          <div className="flex h-screen bg-gray-50">
+            {/* Mobile sidebar */}
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            
+            {/* Static sidebar for desktop */}
+            <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
+              <Sidebar />
+            </div>
+            
+            <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+              <Header onMenuClick={() => setSidebarOpen(true)} />
               
-              {/* Protected Routes */}
-              <Route 
-                path="/" 
-                element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<Dashboard />} />
-                
-                {/* Famílias */}
-                <Route path="familias">
-                  <Route index element={<FamiliasList />} />
-                  <Route path="nova" element={<FamiliaForm />} />
-                  <Route path=":id" element={<FamiliaDetail />} />
-                  <Route path=":id/editar" element={<FamiliaForm />} />
-                </Route>
-                <Route path="/familias" element={<FamiliasList />} />
-                <Route path="/familias/nova" element={<FamiliaForm />} />
-                <Route path="/familias/editar/:id" element={<FamiliaForm />} />
-                <Route path="/familias/:id" element={<FamiliaDetail />} />
-                
-                
-                {/* Membros */}
-                <Route path="membros" element={<MembrosList />} />
-                <Route path="/membros/novo" element={<MembroForm />} />
-                <Route path="/membros/editar/:id" element={<MembroForm />} />
-                <Route path="/membros/:id" element={<MembroDetail />} />
-                
-                {/* Turmas */}
-                <Route path="turmas" element={<TurmasList />} />
-                <Route path="/turmas/nova" element={<TurmaForm />} />
-  <Route path="/turmas/editar/:id" element={<TurmaForm />} />
-  
-                {/* Presenças */}
-                <Route path="presencas" element={<PresencasList />} />
-                
-                {/* Cestas */}
-                <Route path="cestas" element={<CestasList />} />
-                
-                {/* Relatórios */}
-                <Route 
-                  path="relatorios" 
-                  element={
-                    <ProtectedRoute requiredRole="atendente">
-                      <Relatorios />
-                    </ProtectedRoute>
-                  } 
-                />
-                
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-            
-            {/* Toast Notifications */}
-            <Toaster position="top-right" />
-            
-            {/* React Query DevTools */}
-            {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+              <main className="flex-1">
+                <div className="py-6">
+                  <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <Routes>
+                      {/* Public Routes */}
+                      <Route path="/login" element={<Login />} />
+                      
+                      {/* Protected Routes */}
+                      <Route 
+                        path="/" 
+                        element={
+                          <ProtectedRoute>
+                            <Outlet />
+                          </ProtectedRoute>
+                        }
+                      >
+                        <Route index element={<Dashboard />} />
+                        
+                        {/* Famílias */}
+                        <Route path="familias">
+                          <Route index element={<FamiliasList />} />
+                          <Route path="nova" element={<FamiliaForm />} />
+                          <Route path=":id" element={<FamiliaDetail />} />
+                          <Route path=":id/editar" element={<FamiliaForm />} />
+                        </Route>
+                        <Route path="/familias" element={<FamiliasList />} />
+                        <Route path="/familias/nova" element={<FamiliaForm />} />
+                        <Route path="/familias/editar/:id" element={<FamiliaForm />} />
+                        <Route path="/familias/:id" element={<FamiliaDetail />} />
+                        
+                        
+                        {/* Membros */}
+                        <Route path="membros" element={<MembrosList />} />
+                        <Route path="/membros/novo" element={<MembroForm />} />
+                        <Route path="/membros/editar/:id" element={<MembroForm />} />
+                        <Route path="/membros/:id" element={<MembroDetail />} />
+                        
+                        {/* Turmas */}
+                        <Route path="turmas" element={<TurmasList />} />
+                        <Route path="/turmas/nova" element={<TurmaForm />} />
+                        <Route path="/turmas/editar/:id" element={<TurmaForm />} />
+                        
+                        {/* Presenças */}
+                        <Route path="presencas" element={<PresencasList />} />
+                        
+                        {/* Cestas */}
+                        <Route path="cestas" element={<CestasList />} />
+                        
+                        {/* Relatórios */}
+                        <Route 
+                          path="relatorios" 
+                          element={
+                            <ProtectedRoute requiredRole="atendente">
+                              <Relatorios />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        
+                        {/* 404 */}
+                        <Route path="*" element={<NotFound />} />
+                      </Route>
+                    </Routes>
+                  </div>
+                </div>
+              </main>
+            </div>
           </div>
+          
+          {/* Toast Notifications */}
+          <Toaster position="top-right" />
+          
+          {/* React Query DevTools */}
+          {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
         </Router>
       </AuthProvider>
     </QueryClientProvider>
