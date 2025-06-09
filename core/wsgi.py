@@ -1,4 +1,3 @@
-
 """
 WSGI config for the project.
 
@@ -15,4 +14,4 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 # Importa a aplicação WSGI do Django
 from django.core.wsgi import get_wsgi_application
-application = get_wsgi_()
+application = get_wsgi_application()
