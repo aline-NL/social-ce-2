@@ -1,72 +1,56 @@
-import axios from 'axios';
+import api from './api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+interface LoginCredentials {
+  username: string;
+  password: string;
+}
 
-type LoginResponse = {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-  };
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  // Adicione outros campos conforme necessário
+}
+
+interface AuthResponse {
   token: string;
-};
+  user: User;
+}
 
-export const authService = {
-  async login(email: string, password: string): Promise<LoginResponse['user']> {
-    const response = await axios.post<LoginResponse>(`${API_URL}/auth/login`, {
-      email,
-      password,
-    });
-
-    const { user, token } = response.data;
+export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  try {
+    const response = await api.post<AuthResponse>('/auth/login', credentials);
+    const { token, user } = response.data;
     
-    // Store the token for subsequent requests
+    // Salva o token no localStorage
     localStorage.setItem('token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     
-    return user;
-  },
-
-  logout(): void {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
-  },
-
-  getAuthHeader() {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  },
+    // Define o token no cabeçalho das requisições futuras
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    
+    return { token, user };
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
+  }
 };
 
-// Set up axios defaults
-axios.defaults.baseURL = API_URL;
-axios.defaults.headers.common['Content-Type'] = 'application/json';
+export const logout = (): void => {
+  localStorage.removeItem('token');
+  delete api.defaults.headers.common['Authorization'];
+  window.location.href = '/login';
+};
 
-// Add a request interceptor to include the auth token
-axios.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+export const getCurrentUser = async (): Promise<User | null> => {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
 
-// Add a response interceptor to handle 401 Unauthorized
-axios.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
-      // You might want to redirect to login here or handle it in the component
-    }
-    return Promise.reject(error);
+  try {
+    const response = await api.get<User>('/auth/me');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    logout();
+    return null;
   }
-);
+};

@@ -30,7 +30,7 @@
     "@tanstack/react-query-devtools": "^5.17.19",
     "@vitejs/plugin-react": "^4.2.1",
     "axios": "^1.6.7",
-    "date-fns": "^3.6.0",
+    "date-fns": "2.30.0",
     "date-fns-tz": "^3.2.0",
     "formik": "^2.4.5",
     "lucide-react": "^0.517.0",
