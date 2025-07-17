@@ -1,113 +1,320 @@
-import { Fragment } from 'react';
-import { Menu, Transition } from '@headlessui/react';
-import { BellIcon, Bars3Icon } from '@heroicons/react/24/outline';
-import { useAuth } from '../../hooks/useAuth';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
+import {
+  AppBar,
+  Toolbar,
+  IconButton,
+  Typography,
+  Badge,
+  Avatar,
+  Box,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Tooltip,
+  useMediaQuery,
+} from '@mui/material';
+import {
+  Menu as MenuIcon,
+  Notifications as NotificationsIcon,
+  AccountCircle,
+  Logout,
+  Settings,
+  Person,
+} from '@mui/icons-material';
+import { ThemeToggle } from '../theme/ThemeToggle';
+import { useAuth } from '../../contexts/AuthContext';
 
-type HeaderProps = {
+export interface HeaderProps {
   onMenuClick: () => void;
-};
+  title?: string;
+}
 
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header({ onMenuClick, title = 'Dashboard' }: HeaderProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
+  
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [notifications, setNotifications] = useState([
+    { id: 1, message: 'Novo cadastro de família', read: false },
+    { id: 2, message: 'Atualização de turmas', read: false },
+  ]);
+  
+  const menuOpen = Boolean(anchorEl);
+  const notificationsRef = useRef<HTMLButtonElement>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleNotificationsToggle = () => {
+    setNotificationsOpen(!notificationsOpen);
+    
+    // Marcar notificações como lidas
+    if (!notificationsOpen) {
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const handleProfile = () => {
+    navigate('/perfil');
+    handleMenuClose();
+  };
+
+  const handleSettings = () => {
+    navigate('/configuracoes');
+    handleMenuClose();
+  };
+
+  // Fechar menu ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-      <button
-        type="button"
-        className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
-        onClick={onMenuClick}
-      >
-        <span className="sr-only">Abrir menu</span>
-        <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-      </button>
+    <AppBar
+      position="fixed"
+      sx={{
+        zIndex: (theme) => theme.zIndex.drawer + 1,
+        backgroundColor: 'background.paper',
+        color: 'text.primary',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        height: 64,
+        display: 'flex',
+        justifyContent: 'center',
+      }}
+    >
+      <Toolbar disableGutters sx={{ px: { xs: 2, md: 3 } }}>
+        {/* Botão do menu lateral (mobile) */}
+        <IconButton
+          color="inherit"
+          aria-label="abrir menu"
+          onClick={onMenuClick}
+          edge="start"
+          sx={{
+            mr: 2,
+            display: { md: 'none' },
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
 
-      {/* Separator */}
-      <div className="h-6 w-px bg-gray-200 lg:hidden" aria-hidden="true" />
+        {/* Título da página */}
+        <Typography
+          variant="h6"
+          noWrap
+          component="div"
+          sx={{
+            flexGrow: 1,
+            fontWeight: 600,
+            fontSize: '1.25rem',
+            color: 'primary.main',
+          }}
+        >
+          {title}
+        </Typography>
 
-      <div className="flex flex-1 justify-end gap-x-4 self-stretch lg:gap-x-6">
-        <div className="flex items-center gap-x-4 lg:gap-x-6">
-          <button
-            type="button"
-            className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
-          >
-            <span className="sr-only">Ver notificações</span>
-            <BellIcon className="h-6 w-6" aria-hidden="true" />
-          </button>
-
-          {/* Separator */}
-          <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200" aria-hidden="true" />
-
-          {/* Profile dropdown */}
-          <Menu as="div" className="relative">
-            <Menu.Button className="-m-1.5 flex items-center p-1.5">
-              <span className="sr-only">Abrir menu do usuário</span>
-              <div className="flex items-center">
-                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-sm font-medium text-gray-700">
-                    {user?.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')}
-                  </span>
-                </div>
-                <span className="ml-2 hidden lg:flex lg:items-center">
-                  <span className="text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">
-                    {user?.name}
-                  </span>
-                </span>
-              </div>
-            </Menu.Button>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* Botão de alternar tema */}
+          <ThemeToggle />
+          
+          {/* Notificações */}
+          <Tooltip title="Notificações">
+            <IconButton
+              ref={notificationsRef}
+              color="inherit"
+              onClick={handleNotificationsToggle}
+              sx={{
+                position: 'relative',
+                '&:hover': { backgroundColor: 'action.hover' },
+              }}
             >
-              <Menu.Items className="absolute right-0 z-10 mt-2.5 w-48 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-                <Menu.Item>
-                  {({ active }) => (
-                    <a
-                      href="#"
-                      className={`${
-                        active ? 'bg-gray-50' : ''
-                      } block px-3 py-1 text-sm leading-6 text-gray-900`}
-                    >
-                      Meu perfil
-                    </a>
-                  )}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => (
-                    <a
-                      href="#"
-                      className={`${
-                        active ? 'bg-gray-50' : ''
-                      } block px-3 py-1 text-sm leading-6 text-gray-900`}
-                    >
-                      Configurações
-                    </a>
-                  )}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={logout}
-                      className={`${
-                        active ? 'bg-gray-50' : ''
-                      } block w-full text-left px-3 py-1 text-sm leading-6 text-red-600`}
-                    >
-                      Sair
-                    </button>
-                  )}
-                </Menu.Item>
-              </Menu.Items>
-            </Transition>
+              <Badge badgeContent={unreadCount} color="error">
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+          
+          {/* Menu de notificações */}
+          <Menu
+            anchorEl={notificationsRef.current}
+            open={notificationsOpen}
+            onClose={() => setNotificationsOpen(false)}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            PaperProps={{
+              sx: {
+                mt: 1.5,
+                width: 320,
+                maxHeight: 400,
+                overflowY: 'auto',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                borderRadius: 2,
+              },
+            }}
+          >
+            <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+              <Typography variant="subtitle1" fontWeight={600}>
+                Notificações
+              </Typography>
+            </Box>
+            
+            {notifications.length > 0 ? (
+              notifications.map((notification) => (
+                <MenuItem key={notification.id}>
+                  <Box sx={{ width: '100%', py: 1 }}>
+                    <Typography variant="body2" color="text.primary">
+                      {notification.message}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Há 2 horas
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              ))
+            ) : (
+              <Box sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Nenhuma notificação
+                </Typography>
+              </Box>
+            )}
           </Menu>
-        </div>
-      </div>
-    </header>
+
+          {/* Avatar e menu do usuário */}
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+            <IconButton
+              onClick={handleMenuOpen}
+              size="small"
+              aria-controls={menuOpen ? 'account-menu' : undefined}
+              aria-haspopup="true"
+              aria-expanded={menuOpen ? 'true' : undefined}
+              sx={{
+                p: 0,
+                '&:hover': { opacity: 0.8 },
+              }}
+            >
+              <Avatar
+                alt={user?.nome || 'Usuário'}
+                src={user?.foto}
+                sx={{
+                  width: 36,
+                  height: 36,
+                  bgcolor: 'primary.main',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                }}
+              >
+                {user?.nome
+                  ?.split(' ')
+                  .map((n) => n[0])
+                  .join('')}
+              </Avatar>
+            </IconButton>
+
+            <Menu
+              anchorEl={anchorEl}
+              id="account-menu"
+              open={menuOpen}
+              onClose={handleMenuClose}
+              onClick={handleMenuClose}
+              PaperProps={{
+                elevation: 0,
+                sx: {
+                  overflow: 'visible',
+                  filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.12))',
+                  mt: 1.5,
+                  minWidth: 200,
+                  '& .MuiAvatar-root': {
+                    width: 32,
+                    height: 32,
+                    ml: -0.5,
+                    mr: 1,
+                  },
+                  '&:before': {
+                    content: '""',
+                    display: 'block',
+                    position: 'absolute',
+                    top: 0,
+                    right: 14,
+                    width: 10,
+                    height: 10,
+                    bgcolor: 'background.paper',
+                    transform: 'translateY(-50%) rotate(45deg)',
+                    zIndex: 0,
+                  },
+                },
+              }}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+              <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  {user?.nome || 'Usuário'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {user?.email || ''}
+                </Typography>
+              </Box>
+              
+              <MenuItem onClick={handleProfile}>
+                <ListItemIcon>
+                  <Person fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Meu Perfil</ListItemText>
+              </MenuItem>
+              
+              <MenuItem onClick={handleSettings}>
+                <ListItemIcon>
+                  <Settings fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Configurações</ListItemText>
+              </MenuItem>
+              
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <Logout fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Sair</ListItemText>
+              </MenuItem>
+            </Menu>
+          </Box>
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 }
+
+export default Header;
